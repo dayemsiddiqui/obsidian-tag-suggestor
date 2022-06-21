@@ -1,11 +1,14 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-tag-suggestor",
 	"version": "1.0.1",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "This plugin auto suggest relevant tags for your notes.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"deploy": "cp manifest.json ../obsidian-vault/.obsidian/plugins/obsidian-tag-suggester/manifest.json; cp main.js ../obsidian-vault/.obsidian/plugins/obsidian-tag-suggester/main.js",
+		"publish": "npm run build; npm run deploy;",
+		"watch": "nodemon --ignore main.js --exec npm run publish;",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
 	"keywords": [],
@@ -17,6 +20,7 @@
 		"@typescript-eslint/parser": "^5.2.0",
 		"builtin-modules": "^3.2.0",
 		"esbuild": "0.13.12",
+		"nodemon": "^2.0.16",
 		"obsidian": "latest",
 		"tslib": "2.3.1",
 		"typescript": "4.4.4"
