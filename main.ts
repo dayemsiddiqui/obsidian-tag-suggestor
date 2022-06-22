@@ -1,13 +1,16 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import {getTags} from "./FileProcessor";
 
 // Remember to rename these classes and interfaces!
 
 interface MyPluginSettings {
 	mySetting: string;
+	tags:  Record <string, string>
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+	mySetting: 'default',
+	tags: {}
 }
 
 export default class MyPlugin extends Plugin {
@@ -31,10 +34,23 @@ export default class MyPlugin extends Plugin {
 		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
 			id: 'add-auto-suggested-tags',
-			name: 'Automatically Add Relevant Tags',
-			callback: () => {
-				const totalFiles = this.app.vault.getMarkdownFiles().length
-				console.log('Total Markdown Files in vault:', totalFiles);
+			name: 'Sync Tags',
+			callback: async () => {
+				const files = this.app.vault.getMarkdownFiles()
+				console.log('Total Markdown Files in vault:', files.length);
+				let tags: string[] = [];
+				for (const file of files) {
+					const content = await this.app.vault.read(file)
+					const doc_tags =  getTags(content)
+					console.log(doc_tags)
+					tags = tags.concat(doc_tags)
+				}
+				tags.forEach(tag => {
+					this.settings.tags[tag] = tag
+				})
+				await this.saveSettings()
+
+				console.log(`you have following tags:`, tags);
 			}
 		});
 
@@ -58,6 +74,10 @@ export default class MyPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	async updateSettings(settings: MyPluginSettings) {
+		await this.saveData(settings);
 	}
 
 	async saveSettings() {
@@ -107,5 +127,13 @@ class SampleSettingTab extends PluginSettingTab {
 					this.plugin.settings.mySetting = value;
 					await this.plugin.saveSettings();
 				}));
+
+		new Setting(containerEl)
+			.setName('Tags')
+			.setDesc('You current tags are')
+			.addDropdown(component =>  {
+				component
+                    .addOptions(this.plugin.settings.tags)
+			})
 	}
 }
