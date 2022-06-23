@@ -1,5 +1,5 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
-import {getTags} from "./FileProcessor";
+import {extractTags, generateTags} from "./FileProcessor";
 
 // Remember to rename these classes and interfaces!
 
@@ -29,28 +29,29 @@ export default class MyPlugin extends Plugin {
 
 		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
 		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
+		statusBarItemEl.setText('Tag Suggester');
 
-		// This adds a simple command that can be triggered anywhere
+
 		this.addCommand({
-			id: 'add-auto-suggested-tags',
+			id: 'sync-vault-tags',
 			name: 'Sync Tags',
 			callback: async () => {
-				const files = this.app.vault.getMarkdownFiles()
-				console.log('Total Markdown Files in vault:', files.length);
-				let tags: string[] = [];
-				for (const file of files) {
-					const content = await this.app.vault.read(file)
-					const doc_tags =  getTags(content)
-					console.log(doc_tags)
-					tags = tags.concat(doc_tags)
-				}
-				tags.forEach(tag => {
-					this.settings.tags[tag] = tag
-				})
-				await this.saveSettings()
+				statusBarItemEl.setText('Tag Suggester: Syncing...');
+				await this.syncTags();
+				statusBarItemEl.setText('Tag Suggester: Synced');
+			}
+		});
 
-				console.log(`you have following tags:`, tags);
+		this.addCommand({
+			id: 'recommend-tags',
+			name: 'Recommend Tags',
+			callback: async () => {
+				const file = this.app.workspace.getActiveFile()
+				let content = await this.app.vault.read(file)
+				const tags = generateTags(content).join(" ")
+				content = content.concat("\n\n").concat("Recommended Tags: \n").concat(tags)
+				await this.app.vault.modify(file, content)
+				console.log("Current file content: ", content)
 			}
 		});
 
@@ -66,6 +67,24 @@ export default class MyPlugin extends Plugin {
 
 		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
 		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+	}
+
+	private async syncTags() {
+		const files = this.app.vault.getMarkdownFiles()
+		console.log('Total Markdown Files in vault:', files.length);
+		let tags: string[] = [];
+		for (const file of files) {
+			const content = await this.app.vault.read(file)
+			const doc_tags = extractTags(content)
+			console.log(doc_tags)
+			tags = tags.concat(doc_tags)
+		}
+		tags.forEach(tag => {
+			this.settings.tags[tag] = tag
+		})
+		await this.saveSettings()
+
+		console.log(`you have following tags:`, tags);
 	}
 
 	onunload() {
