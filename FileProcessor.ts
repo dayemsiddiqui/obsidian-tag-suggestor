@@ -23,7 +23,7 @@ export const generateTags = (content: string): string[] => {
 		.concat(textFilter(doc, hyphenated))
 		.concat(textFilter(doc, chunks))
 		.concat(textFilter(doc, clauses))
-	tags = Array.from(new Set(processed).values()).map((tag) => toTagFormat(tag))
+	tags = Array.from(new Set(processed).values()).map((tag) => toTagFormat(tag.toString()))
 
 	return tags
 }
