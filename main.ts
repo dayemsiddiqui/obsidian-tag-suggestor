@@ -1,3 +1,4 @@
+import { DocumentClassificationModel } from 'DocumentClassificationModel';
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import {extractTags, generateTags} from "./FileProcessor";
 
@@ -46,12 +47,14 @@ export default class MyPlugin extends Plugin {
 			id: 'recommend-tags',
 			name: 'Recommend Tags',
 			callback: async () => {
+				statusBarItemEl.setText('Tag Suggester: Running ML inference...');
 				const file = this.app.workspace.getActiveFile()
 				let content = await this.app.vault.read(file)
-				const tags = generateTags(content).join(" ")
-				content = content.concat("\n\n").concat("Recommended Tags: \n").concat(tags)
+				const tags = await this.predictTags(content)
+				content = content.concat("\n\n").concat("Recommended Tags: \n").concat(tags.join(" #"))
 				await this.app.vault.modify(file, content)
 				console.log("Current file content: ", content)
+				statusBarItemEl.setText('Tag Suggester: Finished');
 			}
 		});
 
@@ -70,12 +73,20 @@ export default class MyPlugin extends Plugin {
 	}
 
 	private async syncTags() {
+		const documentClassificationModel = new DocumentClassificationModel()
 		const files = this.app.vault.getMarkdownFiles()
 		console.log('Total Markdown Files in vault:', files.length);
 		let tags: string[] = [];
 		for (const file of files) {
 			const content = await this.app.vault.read(file)
 			const doc_tags = extractTags(content)
+			if(content) {
+				documentClassificationModel.trainModel({
+					tags: doc_tags,
+					content
+				})
+			}
+
 			console.log(doc_tags)
 			tags = tags.concat(doc_tags)
 		}
@@ -83,8 +94,35 @@ export default class MyPlugin extends Plugin {
 			this.settings.tags[tag] = tag
 		})
 		await this.saveSettings()
-
+		const predictedTags = documentClassificationModel.predictTags("This is a test content about domain driven design. Lets see if we get the correct results regarding domain primitives. I also talk about functional programming")
+		console.log({predictedTags})
 		console.log(`you have following tags:`, tags);
+	}
+
+	private async predictTags(targetDocument: string) {
+		const documentClassificationModel = new DocumentClassificationModel()
+		const files = this.app.vault.getMarkdownFiles()
+		console.log('Total Markdown Files in vault:', files.length);
+		let tags: string[] = [];
+		for (const file of files) {
+			const content = await this.app.vault.read(file)
+			const doc_tags = extractTags(content)
+			if(content) {
+				documentClassificationModel.trainModel({
+					tags: doc_tags,
+					content
+				})
+			}
+
+			console.log(doc_tags)
+			tags = tags.concat(doc_tags)
+		}
+		tags.forEach(tag => {
+			this.settings.tags[tag] = tag
+		})
+		await this.saveSettings()
+		const predictedTags = documentClassificationModel.predictTags(targetDocument)
+		return predictedTags
 	}
 
 	onunload() {
