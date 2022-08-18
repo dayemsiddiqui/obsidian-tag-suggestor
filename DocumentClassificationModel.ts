@@ -14,6 +14,7 @@ export class DocumentClassificationModel {
 	private _classifier: typeof Classifier;
 
 	constructor() {
+		// TODO: Make this ngram setting configurable
 		this._classifier = new Classifier({
 			nGramMin: 1,
 			nGramMax: 3
